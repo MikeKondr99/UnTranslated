@@ -12,24 +12,35 @@ namespace UnTranslated.ViewModels
     [INotifyPropertyChanged]
     internal partial class MainViewModel
     {
+
+        public static string BackupPath = $@"{Environment.SpecialFolder.ApplicationData}\Untranslated";
         public MainViewModel()
         {
         }
 
         public void LoadTranslatioins()
         {
+            // Добавляем backup
             Translations = new ObservableCollection<IAssets>();
-            if (!Directory.Exists(GameFolder+ "\\Translations"))
+            if (!Directory.Exists(BackupPath))
             {
-                Directory.CreateDirectory(GameFolder + "\\Translations\\Original");
-                Assets.CopyAll(GameFolder + "\\Assets", GameFolder + "\\Translations\\Original");// loading assets from game
+                Directory.CreateDirectory($@"{BackupPath}");
+                Assets.CopyAll($@"{GameFolder}\Assets", $@"{BackupPath}");// loading assets from game
             }
-            var trs = Directory.GetDirectories(GameFolder + "\\Translations");
+            Translations.Add(new Translation("Original", BackupPath, true));
+
+            // Проверяем наличие папки переводов
+            var tfolder = $@"{GameFolder}\Translations";
+            if (Directory.Exists(tfolder))
+                Directory.CreateDirectory(tfolder);
+
+            // Добавляем остальные переводы
+            var trs = Directory.GetDirectories(tfolder);
             foreach (var tr in trs)
                 Translations.Add(new Translation(Path.GetFileName(tr), tr));
             foreach (var tr in Translations)
-                if (!File.Exists(tr.Path + "\\encoding.txt"))
-                    File.Create(tr.Path + "\\encoding.txt");
+                if (!File.Exists($@"{tr.Path}\encoding.txt"))
+                    File.Create($@"{tr.Path}\encoding.txt");
         }
 
         [ObservableProperty]
@@ -42,12 +53,15 @@ namespace UnTranslated.ViewModels
             {
                 var gf = GameFolder; ;
                 if (!Directory.Exists(gf)) return false;
-                if (!File.Exists(gf + "\\Unexplored.vshost.exe")) return false;
-                if (!Directory.Exists(gf + "\\Assets")) return false;
+                if (!File.Exists($@"{gf}\Unexplored.vshost.exe")) return false;
+                if (!Directory.Exists($@"{gf}\Assets")) return false;
                 LoadTranslatioins();
                 return true;
             }
         }
+
+        [ObservableProperty]
+        Translation selectedTranslation;
 
         [RelayCommand]
         private void Launch()
@@ -61,27 +75,21 @@ namespace UnTranslated.ViewModels
         [RelayCommand]
         public void Open(Translation tr)
         {
-            Process.Start("explorer.exe",Path.GetFullPath(tr.Path));
-        }
-
-        [RelayCommand]
-        public void Unload(Translation tr)
-        {
-            Assets.CopyAll(GameFolder + "\\Assets", tr.Path);// loading assets from game
+            Process.Start("explorer.exe", Path.GetFullPath(tr.Path));
         }
 
         [RelayCommand]
         public void Load(Translation tr)
         {
-            Assets.LoadEncodingMap(tr.Path + "\\encoding.txt");
-            Assets.CopyAll(tr.Path, GameFolder + "\\Assets"); // loading assets to game
+            Assets.LoadEncodingMap($@"{tr.Path}\encoding.txt");
+            Assets.CopyAll(tr.Path, $@"{GameFolder}\Assets"); // loading assets to game
             Launch();
         }
 
         [RelayCommand]
         public void Delete(Translation tr)
         {
-            Directory.Delete(tr.Path,true);
+            Directory.Delete(tr.Path, true);
             Translations.Remove(tr);
         }
 
@@ -90,10 +98,10 @@ namespace UnTranslated.ViewModels
         {
             if (!String.IsNullOrWhiteSpace(name))
             {
-                Directory.CreateDirectory(GameFolder+ "\\Translations\\" + name);
-                File.Create(GameFolder + "\\Translations\\encoding.exe");
-                var tr = new Translation(name, Path.GetFullPath(GameFolder + "\\Translations\\" + name));
-                Unload(tr);
+                Directory.CreateDirectory($@"{GameFolder}\Translations\{name}");
+                File.Create($@"{GameFolder}\Translations\encoding.exe");
+                var tr = new Translation(name, Path.GetFullPath($@"{GameFolder}\Translations\" + name));
+                Assets.CopyAll(BackupPath, tr.Path);// loading assets from backup
                 Translations.Add(tr);
             }
         }
@@ -105,15 +113,15 @@ namespace UnTranslated.ViewModels
         {
             try
             {
-                Directory.CreateDirectory(to + "\\Sprites\\Fonts");
-                var fonts = Directory.GetFiles(from + "\\Sprites\\Fonts").Select(x => new FileInfo(x));
+                Directory.CreateDirectory($@"{to}\Sprites\Fonts");
+                var fonts = Directory.GetFiles($@"{from}\Sprites\Fonts").Select(x => new FileInfo(x));
                 foreach (var font in fonts)
-                    File.Copy(font.FullName, to + $"\\Sprites\\Fonts\\{font.Name}",true);
+                    File.Copy(font.FullName, $@"{to}\Sprites\Fonts\{font.Name}", true);
 
-                Directory.CreateDirectory(to + "\\Language");
-                var langs = Directory.GetFiles(from + "\\Language").Select(x => new FileInfo(x));
+                Directory.CreateDirectory($@"{to}\Language");
+                var langs = Directory.GetFiles($@"{from}\Language").Select(x => new FileInfo(x)); 
                 foreach (var lang in langs)
-                    CopyWithReplace(lang.FullName, to + $"\\Language\\{lang.Name}");
+                    CopyWithReplace(lang.FullName, $@"{to}\Language\{lang.Name}");
             }
             catch (Exception ex)
             {
@@ -148,7 +156,7 @@ namespace UnTranslated.ViewModels
         public static void CopyWithReplace(string from, string to)
         {
             using StreamReader input = new StreamReader(from);
-            using StreamWriter output = new StreamWriter(to,false);
+            using StreamWriter output = new StreamWriter(to, false);
             var text = input.ReadToEnd();
             foreach (var rule in EncodingMap)
                 text = text.Replace(rule.Key, rule.Value);

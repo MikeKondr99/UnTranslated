@@ -20,6 +20,14 @@
    <Window.DataContext>
       <vm:MainViewModel />
    </Window.DataContext>
+   <Window.Resources>
+      <DataTemplate DataType="{x:Type vm:TreeNode}">
+         <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding Name}" />
+            <!--<TextBlock Text="{Binding Path}" />-->
+         </StackPanel>
+      </DataTemplate>
+   </Window.Resources>
    <DockPanel>
       <Grid DockPanel.Dock="Top">
          <Grid.ColumnDefinitions>
@@ -35,21 +43,6 @@
             VerticalContentAlignment="Center"
             FilePath="{Binding GamePath}"
             Filter="Unexplored |Unexplored.exe" />
-         <Button Grid.Column="2"
-            Height="24"
-            Margin="0,0.5,0,0"
-            Padding="5,0"
-            VerticalAlignment="Stretch"
-            Command="{Binding LaunchCommand}"
-            Visibility="{Binding GameFolderIsCorrect, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <md:PackIcon
-               Width="28"
-               Height="28"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"
-               Kind="Play"
-               Foreground="Lime" />
-         </Button>
       </Grid>
       <md:Card MinWidth="100" Visibility="{Binding GameFolderIsCorrect, Converter={StaticResource BooleanToVisibilityConverter}}">
          <StackPanel>
@@ -60,11 +53,11 @@
                Text="Translations" />
             <ListView DockPanel.Dock="Left"
                MinWidth="400"
+               SelectedItem="{Binding SelectedTranslation}"
                ItemsSource="{Binding Translations}">
                <ListView.ItemContainerStyle>
                   <Style TargetType="{x:Type ListViewItem}">
                      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                     <Setter Property="Focusable" Value="false" />
                   </Style>
                </ListView.ItemContainerStyle>
                <ListView.ItemTemplate>
@@ -74,11 +67,13 @@
                            VerticalAlignment="Center"
                            Text="{Binding Name}" />
                         <Button DockPanel.Dock="Right"
+                           Visibility="{Binding IsOriginal, Converter={StaticResource InverseBoolToVisConverter}}"
                            Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type local:MainWindow}}}"
                            CommandParameter="{Binding}">
                            <md:PackIcon Kind="Trash" Foreground="White" />
                         </Button>
                         <Button DockPanel.Dock="Right"
+                           Visibility="{Binding IsOriginal, Converter={StaticResource InverseBoolToVisConverter}}"
                            Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type local:MainWindow}}}"
                            CommandParameter="{Binding}">
                            <md:PackIcon Kind="Folder" Foreground="White" />
@@ -107,7 +102,13 @@
 
          </StackPanel>
       </md:Card>
-      <Grid />
+      <Grid>
+         <pt:TreeListBox
+            HierarchySource="{Binding SelectedTranslation.Assets}"
+            ChildrenPath="Children"
+            IsExpandedPath="IsExpanded"
+            IsSelectedPath="IsSelected" />
+      </Grid>
    </DockPanel>
 
 </Window>
