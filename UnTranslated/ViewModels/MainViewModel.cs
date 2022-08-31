@@ -130,20 +130,9 @@ namespace UnTranslated.ViewModels
         {
             try
             {
-                Directory.CreateDirectory($@"{to}\Sprites\Fonts");
-                var fonts = Directory.GetFiles($@"{from}\Sprites\Fonts").Select(x => new FileInfo(x));
-                foreach (var font in fonts)
-                    File.Copy(font.FullName, $@"{to}\Sprites\Fonts\{font.Name}", true);
-
-                Directory.CreateDirectory($@"{to}\Language");
-                var langs = Directory.GetFiles($@"{from}\Language").Select(x => new FileInfo(x)); 
-                foreach (var lang in langs)
-                    CopyWithReplace(lang.FullName, $@"{to}\Language\{lang.Name}");
-
-                Directory.CreateDirectory($@"{to}\Grammars\Texts");
-                var texts = Directory.GetFiles($@"{from}\Grammars\Texts").Select(x => new FileInfo(x)); 
-                foreach (var text in texts)
-                    CopyWithReplace(text.FullName, $@"{to}\Grammars\Texts\{text.Name}");
+                CopyDirectory($@"{from}\Sprites\Fonts",@$"{to}\Sprites\Fonts",false);
+                CopyDirectory($@"{from}\Language",@$"{to}\Language",true);
+                CopyDirectory($@"{from}\Grammars\Texts",@$"{to}\Grammars\Texts",true);
             }
             catch (Exception ex)
             {
@@ -151,6 +140,19 @@ namespace UnTranslated.ViewModels
             }
             return true;
         }
+
+        private static void CopyDirectory(string from,string to,bool withReplace)
+        {
+                Directory.CreateDirectory($@"{to}\Sprites\Fonts");
+                var files = Directory.GetFiles($@"{from}\Sprites\Fonts").Select(x => new FileInfo(x));
+                if(withReplace)
+                    foreach (var file in files)
+                        File.Copy(file.FullName, $@"{to}\Sprites\Fonts\{file.Name}", true);
+                else
+                    foreach (var file in files)
+                        CopyWithReplace(file.FullName, $@"{to}\Grammars\Texts\{file.Name}");
+        }
+
         public static bool LoadEncodingMap(string path)
         {
             try
