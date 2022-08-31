@@ -15,7 +15,7 @@ namespace UnTranslated.ViewModels
     internal partial class MainViewModel
     {
 
-        public static string BackupPath = $@"%appdata%\Untranslated";
+        public static string BackupPath = $@"{Environment.ExpandEnvironmentVariables("%appdata%")}\Untranslated";
         public MainViewModel()
         {
             if(File.Exists("gamepath.txt"))
@@ -118,7 +118,7 @@ namespace UnTranslated.ViewModels
                 }
                 else
                 {
-                    MessageBox.Show("Имя содержит недопустимые символы");
+                    MessageBox.Show("Only letters and digits are allowed");
                 }
             }
         }
@@ -131,8 +131,7 @@ namespace UnTranslated.ViewModels
             try
             {
                 CopyDirectory($@"{from}\Sprites\Fonts",@$"{to}\Sprites\Fonts",false);
-                CopyDirectory($@"{from}\Language",@$"{to}\Language",true);
-                CopyDirectory($@"{from}\Grammars\Texts",@$"{to}\Grammars\Texts",true);
+                CopyDirectory($@"{from}\Language",@$"{to}\Language",false);
             }
             catch (Exception ex)
             {
@@ -143,14 +142,14 @@ namespace UnTranslated.ViewModels
 
         private static void CopyDirectory(string from,string to,bool withReplace)
         {
-                Directory.CreateDirectory($@"{to}\Sprites\Fonts");
-                var files = Directory.GetFiles($@"{from}\Sprites\Fonts").Select(x => new FileInfo(x));
+                Directory.CreateDirectory(to);
+                var files = Directory.GetFiles(from).Select(x => new FileInfo(x));
                 if(withReplace)
                     foreach (var file in files)
-                        File.Copy(file.FullName, $@"{to}\Sprites\Fonts\{file.Name}", true);
+                        CopyWithReplace(file.FullName, @$"{to}\{file.Name}");
                 else
                     foreach (var file in files)
-                        CopyWithReplace(file.FullName, $@"{to}\Grammars\Texts\{file.Name}");
+                        File.Copy(file.FullName, @$"{to}\{file.Name}", true);
         }
 
         public static bool LoadEncodingMap(string path)
@@ -163,10 +162,6 @@ namespace UnTranslated.ViewModels
                 {
                     var line = file.ReadLine();
                     var rule = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (rule[1].StartsWith("&#"))
-                    {
-                        rule[1] = ((char)(int.Parse(rule[1][2..^2]))).ToString();
-                    }
                     rules[rule[0]] = rule[1];
                 }
                 EncodingMap = rules;
