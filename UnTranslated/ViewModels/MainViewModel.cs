@@ -131,7 +131,7 @@ namespace UnTranslated.ViewModels
             try
             {
                 CopyDirectory($@"{from}\Sprites\Fonts",@$"{to}\Sprites\Fonts",false);
-                CopyDirectory($@"{from}\Language",@$"{to}\Language",false);
+                CopyDirectory($@"{from}\Language",@$"{to}\Language",true);
             }
             catch (Exception ex)
             {
