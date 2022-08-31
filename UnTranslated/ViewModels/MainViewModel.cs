@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using Microsoft.Win32.SafeHandles;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.Generic;
@@ -6,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Windows;
 
 namespace UnTranslated.ViewModels
 {
@@ -13,9 +15,14 @@ namespace UnTranslated.ViewModels
     internal partial class MainViewModel
     {
 
-        public static string BackupPath = $@"{Environment.SpecialFolder.ApplicationData}\Untranslated";
+        public static string BackupPath = $@"%appdata%\Untranslated";
         public MainViewModel()
         {
+            if(File.Exists("gamepath.txt"))
+            {
+                using var sr = new StreamReader("gamepath.txt");
+                GamePath = sr.ReadToEnd();
+            }
         }
 
         public void LoadTranslatioins()
@@ -29,12 +36,9 @@ namespace UnTranslated.ViewModels
             }
             Translations.Add(new Translation("Original", BackupPath, true));
 
-            // Проверяем наличие папки переводов
-            var tfolder = $@"{GameFolder}\Translations";
-            if (Directory.Exists(tfolder))
-                Directory.CreateDirectory(tfolder);
-
             // Добавляем остальные переводы
+            var tfolder = $@"{GameFolder}\Translations";
+            Directory.CreateDirectory(tfolder);
             var trs = Directory.GetDirectories(tfolder);
             foreach (var tr in trs)
                 Translations.Add(new Translation(Path.GetFileName(tr), tr));
@@ -51,6 +55,10 @@ namespace UnTranslated.ViewModels
         {
             get
             {
+                using(StreamWriter sw = new StreamWriter("gamepath.txt"))
+                {
+                    sw.Write(GamePath);
+                }
                 var gf = GameFolder; ;
                 if (!Directory.Exists(gf)) return false;
                 if (!File.Exists($@"{gf}\Unexplored.vshost.exe")) return false;
@@ -81,9 +89,11 @@ namespace UnTranslated.ViewModels
         [RelayCommand]
         public void Load(Translation tr)
         {
-            Assets.LoadEncodingMap($@"{tr.Path}\encoding.txt");
-            Assets.CopyAll(tr.Path, $@"{GameFolder}\Assets"); // loading assets to game
-            Launch();
+            if(Assets.LoadEncodingMap($@"{tr.Path}\encoding.txt"))
+            {
+                Assets.CopyAll(tr.Path, $@"{GameFolder}\Assets"); // loading assets to game
+                Launch();
+            }
         }
 
         [RelayCommand]
@@ -98,11 +108,18 @@ namespace UnTranslated.ViewModels
         {
             if (!String.IsNullOrWhiteSpace(name))
             {
-                Directory.CreateDirectory($@"{GameFolder}\Translations\{name}");
-                File.Create($@"{GameFolder}\Translations\encoding.exe");
-                var tr = new Translation(name, Path.GetFullPath($@"{GameFolder}\Translations\" + name));
-                Assets.CopyAll(BackupPath, tr.Path);// loading assets from backup
-                Translations.Add(tr);
+                if(name.Any(c => Char.IsLetterOrDigit(c)))
+                {
+                    Directory.CreateDirectory($@"{GameFolder}\Translations\{name}");
+                    File.Create($@"{GameFolder}\Translations\encoding.txt");
+                    var tr = new Translation(name, Path.GetFullPath($@"{GameFolder}\Translations\" + name));
+                    Assets.CopyAll(BackupPath, tr.Path);
+                    Translations.Add(tr);
+                }
+                else
+                {
+                    MessageBox.Show("Имя содержит недопустимые символы");
+                }
             }
         }
     }
@@ -122,10 +139,15 @@ namespace UnTranslated.ViewModels
                 var langs = Directory.GetFiles($@"{from}\Language").Select(x => new FileInfo(x)); 
                 foreach (var lang in langs)
                     CopyWithReplace(lang.FullName, $@"{to}\Language\{lang.Name}");
+
+                Directory.CreateDirectory($@"{to}\Grammars\Texts");
+                var texts = Directory.GetFiles($@"{from}\Grammars\Texts").Select(x => new FileInfo(x)); 
+                foreach (var text in texts)
+                    CopyWithReplace(text.FullName, $@"{to}\Grammars\Texts\{text.Name}");
             }
             catch (Exception ex)
             {
-                return false;
+                MessageBox.Show($"Error: {ex.Message}");
             }
             return true;
         }
@@ -139,14 +161,18 @@ namespace UnTranslated.ViewModels
                 {
                     var line = file.ReadLine();
                     var rule = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (rule[1].StartsWith("&#"))
+                    {
+                        rule[1] = ((char)(int.Parse(rule[1][2..^2]))).ToString();
+                    }
                     rules[rule[0]] = rule[1];
                 }
                 EncodingMap = rules;
             }
             catch (Exception ex)
             {
+                MessageBox.Show("Encoding map not found");
                 return false;
-                EncodingMap = new Dictionary<string, string>();
             }
             return true;
         }
